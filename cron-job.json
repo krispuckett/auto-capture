@@ -1,0 +1,22 @@
+{
+  "name": "auto-capture",
+  "description": "Auto-capture session content to daily memory logs. Catches anything not written down during conversation.",
+  "enabled": true,
+  "deleteAfterRun": false,
+  "schedule": {
+    "kind": "cron",
+    "expr": "15 8,10,12,14,16,18,20,22 * * *",
+    "tz": "America/Denver"
+  },
+  "sessionTarget": "isolated",
+  "wakeMode": "next-heartbeat",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "AUTO-CAPTURE TASK. You are a memory capture agent. Your job is to find information from recent conversations that hasn't been written to today's daily log.\n\nSteps:\n1. Use sessions_list with activeMinutes=180, messageLimit=50 to find recent sessions\n2. Use sessions_history on the main session (sessionKey 'agent:main:main') with limit=30, includeTools=false to get recent conversation\n3. Read today's daily log at memory/YYYY-MM-DD.md (use actual current date and year)\n4. Compare: identify ANY information shared by the user that is NOT already captured in the daily log. Look for:\n   - Health data, metrics, symptoms\n   - Decisions, purchases, plans\n   - Life events, calendar items\n   - Tasks set, reminders created\n   - Important conversations or insights\n5. If you find uncaptured information, append it to the daily log under a section:\n   ## Auto-Captured (HH:MMam/pm)\n   - bullet points of new information\n6. After writing, run: bash ~/clawd/scripts/rebuild-state.sh\n7. If nothing new to capture, reply NO_REPLY\n\nBe thorough but concise. Write facts, not commentary. Skip routine acknowledgments and greetings. Only capture information with real value.\n\nDo NOT send any message to the user. This is a silent background task."
+  },
+  "isolation": {
+    "postToMainPrefix": "AutoCapture",
+    "postToMainMode": "summary",
+    "postToMainMaxChars": 2000
+  }
+}
