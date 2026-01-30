@@ -1,28 +1,36 @@
 # Auto-Capture
 
-A [Clawdbot](https://github.com/clawdbot/clawdbot) skill that catches what your AI drops.
+A [Clawdbot](https://github.com/clawdbot/clawdbot) skill that makes your AI's memory more reliable.
 
-## The problem
+## What Clawdbot already does
 
-Your AI assistant doesn't have memory. It has files it can read. If it doesn't write something down during the conversation, the next session starts blank. Context compaction, session restarts, cron jobs running in isolation — there are a dozen ways information gets lost between "you told me" and "I remember."
+Clawdbot has persistent memory. Files, daily logs, semantic search — your assistant reads them every session and picks up where it left off. That part works.
 
-We kept running into this. The assistant missed three days of cycling data. Sent a wrong iron supplement reminder. Called it my "first movement day" when it was my third ride in four days. Every failure traced back to the same thing: data that existed in conversation but never made it to the log file.
+## What this adds
 
-## What this does
+Conversations are long. Context windows fill up and compact. Sessions restart. Cron jobs run in isolation. There are gaps between "said in conversation" and "written to the log." Auto-Capture closes those gaps.
 
-Auto-Capture runs as a cron job every two hours. It pulls your recent conversation history, reads today's daily log, and writes down anything that's missing.
+It runs hourly in the background, pulls recent conversation history, checks what made it into today's daily log, and writes down anything that's missing. Your assistant's memory was already good. This makes it airtight.
 
-That's it. No magic. It just does the thing the AI should have done during the conversation.
+**It captures:** health data, decisions, purchases, plans, calendar items, tasks, reminders — anything with real informational value that was discussed but not yet logged.
 
-**It captures:** health data, decisions, purchases, plans, calendar stuff, tasks, reminders, anything with actual informational value.
+**It skips:** tool calls, system messages, heartbeats, routine responses, stuff already in the log.
 
-**It skips:** tool calls, system messages, heartbeats, "sounds good" responses, stuff already in the log.
+## How it works
+
+1. Scans recent session history across active sessions
+2. Reads today's daily log
+3. Finds information gaps
+4. Appends missing info under a timestamped `## Auto-Captured` section
+5. Rebuilds the state cache from updated logs
+
+Runs silently. You never see it unless you check the daily log.
 
 ## The architecture in one sentence
 
 Daily logs are truth. Everything else is a cache.
 
-`heartbeat-state.json`, pattern files, weekly summaries — those all get rebuilt from daily logs by `rebuild-state.js`. If the cache is wrong, rebuild it. If the log is wrong, you have a real problem. Auto-Capture makes sure the log stays complete.
+`heartbeat-state.json`, pattern files, weekly summaries — all rebuilt from daily logs by `rebuild-state.js`. Auto-Capture makes sure the logs stay complete. The caches take care of themselves.
 
 ## Setup
 
@@ -34,7 +42,7 @@ cp -r auto-capture ~/clawd/skills/
 
 **2. Add the cron job**
 
-Import `cron-job.json` or create it manually. Runs every 2 hours, 8am–10pm.
+Import `cron-job.json` or create it manually. Runs every hour during waking hours (8am–10pm).
 
 **3. Run the state rebuilder**
 
@@ -50,10 +58,6 @@ Parses your daily logs, rebuilds `heartbeat-state.json`. Run it on morning brief
 - `scripts/rebuild-state.js` — Rebuilds state from daily logs
 - `scripts/rebuild-state.sh` — Shell wrapper
 - `cron-job.json` — Ready to import
-
-## How this got built
-
-Debugging session over iMessage. The assistant kept getting things wrong. We traced every failure to stale state and unwritten data. Built the fix in an hour. Now the AI audits its own memory.
 
 ## License
 
