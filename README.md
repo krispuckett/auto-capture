@@ -1,92 +1,69 @@
 # Auto-Capture
 
-A [Clawdbot](https://github.com/clawdbot/clawdbot) skill that automatically captures conversation content to daily memory logs. No more lost context between sessions.
+A [Clawdbot](https://github.com/clawdbot/clawdbot) skill that gives your AI assistant persistent memory — automatically.
 
-## The Problem
+## Why This Exists
 
-AI assistants are stateless between turns. If you tell your assistant something important and it doesn't write it down immediately, that information can be lost — to context compaction, session boundaries, or just never getting logged.
+AI assistants wake up fresh every session. If yours tells you it "remembers" something, what it really means is: that information exists in a file it can read. If it never wrote it down, it's gone.
 
-This skill is a safety net. It periodically reviews conversation history, compares it against your daily memory logs, and fills in the gaps automatically.
+We hit this the hard way. Our assistant missed three days of cycling data, sent wrong reminders, and claimed it was our "first movement day" when it wasn't. The problem wasn't the memory system — the tools worked fine. The problem was the assistant not writing things down fast enough before context got recycled.
 
-## What It Does
+Auto-Capture fixes this. It runs in the background every two hours, reviews what was said in conversation, checks what made it into the daily log, and fills in the gaps. Think of it as spell-check for your AI's memory.
 
-- **Session scanning** — Pulls recent conversation history from main + isolated sessions via `sessions_list` and `sessions_history`
-- **Semantic deduplication** — Reads today's daily log and only captures information that isn't already there
-- **Structured output** — Appends new information under a timestamped `## Auto-Captured` section
-- **State rebuild** — Includes `rebuild-state.js` to derive state caches from daily logs (never trust a cache as source of truth)
+## How It Works
+
+1. **Scans** recent conversation history across all active sessions
+2. **Reads** today's daily memory log
+3. **Compares** — finds anything mentioned in conversation that didn't make it to the log
+4. **Writes** missing information to the log under a timestamped section
+5. **Rebuilds** the state cache from the updated logs
+
+The daily log is always the source of truth. Everything else — state files, caches, pattern trackers — gets derived from it. If the cache is stale, nothing breaks. The logs are always right.
 
 ## What Gets Captured
 
-- Health data, metrics, symptoms
-- Decisions, purchases, plans
-- Life events, calendar items
-- Tasks and reminders set
-- Key conversations and insights
+Health data, decisions, purchases, plans, calendar items, tasks, reminders, key conversations. Anything with real informational value.
 
-## What Gets Skipped
-
-- Tool call details
-- System messages and heartbeats
-- Content already in today's log
-- Routine acknowledgments
+What gets skipped: tool calls, system messages, greetings, "sounds good" type responses.
 
 ## Setup
 
-### 1. Install the skill
-
-Copy `SKILL.md` and `scripts/` to your Clawdbot skills directory:
+### 1. Copy the skill
 
 ```bash
 cp -r auto-capture ~/clawd/skills/
 ```
 
-### 2. Create the cron job
+### 2. Add the cron job
 
-The skill runs as a Clawdbot cron job. Add it via the cron tool or manually:
+Import `cron-job.json` or create it manually. Default schedule: every 2 hours during waking hours (8am–10pm).
 
-```
-Schedule: 15 8,10,12,14,16,18,20,22 * * * (every 2 hours, waking hours)
-Session: isolated
-```
-
-See `cron-job.json` for the full job definition you can import.
-
-### 3. Set up rebuild-state
-
-The `scripts/rebuild-state.js` script parses your daily memory logs and rebuilds `heartbeat-state.json` as a derived cache.
+### 3. Run the state rebuilder
 
 ```bash
 node scripts/rebuild-state.js
 ```
 
-Run it on morning briefings or any time you need fresh state.
-
-## Architecture
-
-```
-Daily logs (memory/YYYY-MM-DD.md) ← SOURCE OF TRUTH
-         ↑
-   Auto-Capture writes here
-         ↑
-   Compares against session history
-         ↑
-   sessions_list + sessions_history
-```
-
-The key principle: **daily logs are truth, state files are caches.** The auto-capture agent writes to daily logs. The rebuild script derives state from them. Nothing critical reads from the cache alone.
+This parses your daily logs and rebuilds `heartbeat-state.json` as a derived cache. Run it whenever you want fresh state — the morning briefing cron is a good place.
 
 ## Files
 
-| File | Purpose |
-|------|---------|
+| File | What it does |
+|------|-------------|
 | `SKILL.md` | Skill definition for Clawdbot |
-| `scripts/rebuild-state.js` | Rebuilds heartbeat-state.json from daily logs |
+| `scripts/rebuild-state.js` | Rebuilds state cache from daily logs |
 | `scripts/rebuild-state.sh` | Shell wrapper for the rebuild script |
-| `cron-job.json` | Importable cron job definition |
+| `cron-job.json` | Ready-to-import cron job definition |
+
+## The Principle
+
+Daily logs are truth. State files are caches. Caches go stale. Logs don't.
+
+If your AI reads from a cache and the cache is wrong, your AI is wrong. If it reads from the log — the thing it actually wrote to during the conversation — it's right. Auto-Capture makes sure the log is always complete.
 
 ## Origin
 
-Built live over iMessage in one hour after debugging a memory reliability issue. The AI assistant was reading from a stale state cache instead of its own daily logs — missing exercise data, sending wrong reminders. The fix: make the AI audit itself.
+Built in one hour over iMessage after a frustrating debugging session with our assistant. It kept getting things wrong. We traced every failure back to the same root cause: stale state, unwritten data. So we built a system where the AI audits its own memory. Now it catches what it drops.
 
 ## License
 
